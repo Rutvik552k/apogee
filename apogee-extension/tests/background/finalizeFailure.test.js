@@ -156,6 +156,67 @@ test("finalize succeeds without preserving when storage works (#265)", async () 
   );
 });
 
+test("fresh pending finalize is not evicted before TTL", () => {
+  pendingFinalizeRetries.clear();
+
+  const now = 1_000_000;
+
+  pendingFinalizeRetries.set(
+    "job-fresh",
+    { text: "fresh summary" },
+    now - 5 * 60 * 1000 + 1,
+  );
+  pendingFinalizeRetries.evictStale(now);
+
+  assert.strictEqual(
+    pendingFinalizeRetries.has("job-fresh", now),
+    true,
+    "fresh pending finalize remains before TTL",
+  );
+});
+
+test("expired pending finalize is evicted after TTL", () => {
+  pendingFinalizeRetries.clear();
+
+  const now = 1_000_000;
+
+  pendingFinalizeRetries.set(
+    "job-expired",
+    { text: "expired summary" },
+    now - 5 * 60 * 1000,
+  );
+  pendingFinalizeRetries.evictStale(now);
+
+  assert.strictEqual(
+    pendingFinalizeRetries.has("job-expired", now),
+    false,
+    "expired pending finalize is evicted",
+  );
+});
+
+test("takePendingFinalize does not return expired entries", () => {
+  pendingFinalizeRetries.clear();
+
+  const now = 1_000_000;
+
+  pendingFinalizeRetries.set(
+    "job-expired-take",
+    { text: "expired summary" },
+    now - 5 * 60 * 1000,
+  );
+
+  assert.strictEqual(
+    takePendingFinalize("job-expired-take", now),
+    null,
+    "expired pending finalize cannot be taken for retry",
+  );
+  assert.strictEqual(
+    pendingFinalizeRetries.has("job-expired-take", now),
+    false,
+    "expired entry is removed",
+  );
+});
+
 test("fire-and-forget finalize call sites are awaited with catch handlers (#265)", () => {
   const swCode = fs.readFileSync(
     new URL("../../background/service-worker.js", import.meta.url),
