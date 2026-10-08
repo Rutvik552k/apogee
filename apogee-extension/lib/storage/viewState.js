@@ -37,7 +37,7 @@ const MAX_VIEW_STATES = 50;
 // View states duplicate summary text per tab, so they get their own byte
 // budget well inside the storage quota. Measured natively when possible,
 // else the count cap alone applies.
-export const MAX_VIEW_STATE_BYTES = 1_000_000;
+const MAX_VIEW_STATE_BYTES = 1_000_000;
 
 const acquireViewStateLock = createLock();
 
