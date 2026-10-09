@@ -6,6 +6,7 @@ import {
   postChatRequest,
   pumpChatBody,
 } from "./httpChatStream.js";
+import { LLM_HEALTH_CHECK_TIMEOUT_MS } from "../constants.js";
 
 class LlamaCppError extends UserFacingError {}
 
@@ -193,7 +194,11 @@ function positiveInt(value) {
  * contextTokens. Connected with an empty model list is therefore the signature
  * of a bad key rather than of a server that has nothing loaded.
  */
-export async function checkHealth(host, timeoutMs = 3000, apiKey = "") {
+export async function checkHealth(
+  host,
+  timeoutMs = LLM_HEALTH_CHECK_TIMEOUT_MS,
+  apiKey = "",
+) {
   await ensureLoopbackCorsRuleSoon();
   const base = stripTrailingSlashes(host);
   const disconnected = { connected: false, models: [], contextTokens: null };

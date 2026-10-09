@@ -14,6 +14,11 @@ import {
 import { createLock } from "../lib/util/mutex.js";
 import { WEBLLM_MODELS, isKnownWebLLMModelId } from "../lib/constants.js";
 import {
+  OFFSCREEN_STALL_NOTE_MS,
+  WEBLLM_DOWNLOAD_RETRY_BASE_DELAY_MS,
+} from "../lib/constants.js";
+import { retryWithBackoff, retryProgressText } from "../lib/util/retry.js";
+import {
   withTransformersEngine,
   transformersChatStream,
   getTransformersStatus,
@@ -190,7 +195,7 @@ async function ensureEngine(modelId) {
       .catch(() => {});
   };
 
-  const STALL_NOTE_MS = 45 * 1000;
+  const STALL_NOTE_MS = OFFSCREEN_STALL_NOTE_MS;
   let lastReport = null;
   let stallTimer = null;
   const scheduleStallNote = () => {
@@ -228,32 +233,31 @@ async function ensureEngine(modelId) {
   const MAX_DOWNLOAD_ATTEMPTS = 4;
   try {
     scheduleStallNote();
-    for (let attempt = 1; ; attempt++) {
-      try {
-        engine = await CreateMLCEngine(modelId, engineOptions);
-        break;
-      } catch (err) {
-        console.error(`Model load attempt ${attempt} failed:`, err);
-        if (!isInterruptedDownloadError(err)) {
-          loadingModelId = null;
-          throw err;
-        }
-        if (attempt >= MAX_DOWNLOAD_ATTEMPTS) {
-          loadingModelId = null;
-          throw new Error(
-            "The model download keeps getting interrupted (the download " +
-              "server stalled or the connection dropped). Progress so far " +
-              "is saved, so trying again later will resume where it left " +
-              "off.",
-            { cause: err },
-          );
-        }
-        sendProgress({
-          progress: 0,
-          text: `Download hiccup - retrying (attempt ${attempt + 1} of ${MAX_DOWNLOAD_ATTEMPTS})...`,
-        });
-        await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
-      }
+    try {
+      engine = await retryWithBackoff({
+        maxAttempts: MAX_DOWNLOAD_ATTEMPTS,
+        baseDelayMs: WEBLLM_DOWNLOAD_RETRY_BASE_DELAY_MS,
+        isTransient: isInterruptedDownloadError,
+        onRetry: (attempt, err) => {
+          console.error(`Model load attempt ${attempt} failed:`, err);
+          sendProgress({
+            progress: 0,
+            text: retryProgressText(attempt, MAX_DOWNLOAD_ATTEMPTS),
+          });
+        },
+        task: () => CreateMLCEngine(modelId, engineOptions),
+      });
+    } catch (err) {
+      console.error("Model load failed:", err);
+      loadingModelId = null;
+      if (!isInterruptedDownloadError(err)) throw err;
+      throw new Error(
+        "The model download keeps getting interrupted (the download " +
+          "server stalled or the connection dropped). Progress so far " +
+          "is saved, so trying again later will resume where it left " +
+          "off.",
+        { cause: err },
+      );
     }
   } finally {
     clearTimeout(stallTimer);

@@ -2,7 +2,9 @@ import { debugLog } from "../util/log.js";
 import {
   TRANSFORMERS_MODELS,
   EXPERIMENTAL_WASM_THREADS,
+  TRANSFORMERS_LOAD_RETRY_BASE_DELAY_MS,
 } from "../constants.js";
+import { retryWithBackoff, retryProgressText } from "../util/retry.js";
 import { getTransformers } from "./transformersLib.js";
 import { ortWasmUrl, ortWasmBinary } from "./onnxWasm.js";
 import { createLock } from "../util/mutex.js";
@@ -84,28 +86,29 @@ function reportDownloadProgress(onProgress, prefix) {
 async function loadPipeline(modelId, modelInfo, onProgress) {
   const pipeline = await configureWasmBackend("text-gen");
 
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await pipeline("text-generation", modelInfo.id, {
+  return retryWithBackoff({
+    maxAttempts: LOAD_MAX_ATTEMPTS,
+    baseDelayMs: TRANSFORMERS_LOAD_RETRY_BASE_DELAY_MS,
+    isTransient: isTransientLoadError,
+    onRetry: (attempt, err) => {
+      debugLog(
+        `[transformers] load attempt ${attempt} failed: ${err?.message}`,
+      );
+      onProgress?.({
+        progress: 0,
+        text: retryProgressText(attempt, LOAD_MAX_ATTEMPTS),
+      });
+    },
+    task: () =>
+      pipeline("text-generation", modelInfo.id, {
         dtype: modelInfo.dtype,
         device: "wasm",
         progress_callback: reportDownloadProgress(
           onProgress,
           "Downloading model",
         ),
-      });
-    } catch (err) {
-      debugLog(
-        `[transformers] load attempt ${attempt} failed: ${err?.message}`,
-      );
-      if (!isTransientLoadError(err) || attempt >= LOAD_MAX_ATTEMPTS) throw err;
-      onProgress?.({
-        progress: 0,
-        text: `Download hiccup - retrying (attempt ${attempt + 1} of ${LOAD_MAX_ATTEMPTS})...`,
-      });
-      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
-    }
-  }
+      }),
+  });
 }
 
 async function ensureEngine(modelId, onProgress) {

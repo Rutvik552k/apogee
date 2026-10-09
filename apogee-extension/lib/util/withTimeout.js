@@ -27,3 +27,14 @@ export function withTimeout(promise, ms, { onTimeout } = {}) {
     clearTimeout(timer),
   );
 }
+
+/**
+ * Linear backoff for download/load retries: longer wait on each attempt.
+ *
+ * @param {number} baseMs base delay per attempt.
+ * @param {number} attempt 1-based attempt count.
+ * @returns delay in milliseconds.
+ */
+export function retryDelayForAttempt(baseMs, attempt) {
+  return baseMs * attempt;
+}

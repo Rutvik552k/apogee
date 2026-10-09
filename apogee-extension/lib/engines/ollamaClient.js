@@ -6,6 +6,7 @@ import {
   postChatRequest,
   pumpChatBody,
 } from "./httpChatStream.js";
+import { LLM_HEALTH_CHECK_TIMEOUT_MS } from "../constants.js";
 
 class OllamaError extends UserFacingError {}
 
@@ -81,7 +82,10 @@ export async function* chatStream(
   });
 }
 
-export async function checkHealth(host, timeoutMs = 3000) {
+export async function checkHealth(
+  host,
+  timeoutMs = LLM_HEALTH_CHECK_TIMEOUT_MS,
+) {
   await ensureLoopbackCorsRuleSoon();
   try {
     const response = await fetch(`${stripTrailingSlashes(host)}/api/tags`, {
