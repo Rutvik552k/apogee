@@ -812,10 +812,7 @@ const EXTRACTOR_INFO = {
 // synthesis uses buildMultiTabSummaryPrompt (no focusKeyword param - see
 // background/service-worker.js). Video goes through summarizeYoutube and
 // discussion threads go through the discussion prompts, both of which honor
-// focusKeyword (see lib/summarize/ollamaSummarize.js). A visible input that
-// silently does nothing is worse than no input, so it's hidden rather than
-// just disabled. Called from updateExtractorChip so every site that resolves
-// a page's type stays in sync automatically.
+// focusKeyword (see lib/summarize/ollamaSummarize.js).
 function isFocusKeywordSupportedType(type) {
   return type !== "multi-tab";
 }
@@ -849,16 +846,14 @@ async function getSummaryCacheKeys(url, settings, model, focusKeyword) {
     ),
   };
 }
-function updateFocusKeywordAvailability(pageData) {
-  if (!focusKeywordInput) return;
-  focusKeywordInput.classList.toggle(
+function updateExtractorChip(pageData) {
+  // Visibility lives here so every site that resolves a page's type stays
+  // in sync automatically. A visible input that silently does nothing is
+  // worse than no input, so it's hidden rather than just disabled.
+  focusKeywordInput?.classList.toggle(
     "hidden",
     !isFocusKeywordSupportedType(pageData?.type),
   );
-}
-
-function updateExtractorChip(pageData) {
-  updateFocusKeywordAvailability(pageData);
   const type = pageData?.isPdf ? "pdf" : pageData?.type;
   const info = EXTRACTOR_INFO[type];
   const summaryChip = {

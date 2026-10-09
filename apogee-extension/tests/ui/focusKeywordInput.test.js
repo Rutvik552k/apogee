@@ -135,8 +135,7 @@ test("re-summarizing the same page does not clear the focus keyword (#161)", () 
 });
 
 test("the focus keyword input is hidden on multi-tab pages only - video and discussion honor it (#388)", () => {
-  // Single source of truth lives in isFocusKeywordSupportedType (#319);
-  // updateFocusKeywordAvailability just delegates to it.
+  // Single source of truth lives in isFocusKeywordSupportedType (#319).
   const helperMatch = appCode.match(
     /function isFocusKeywordSupportedType[\s\S]*?\n\}/,
   );
@@ -149,17 +148,15 @@ test("the focus keyword input is hidden on multi-tab pages only - video and disc
   assert.doesNotMatch(helperBody, /isVideoType/);
   assert.doesNotMatch(helperBody, /isDiscussionType/);
 
-  const fnMatch = appCode.match(
-    /function updateFocusKeywordAvailability[\s\S]*?\n\}/,
-  );
-  assert.ok(fnMatch, "updateFocusKeywordAvailability function found");
-  assert.match(fnMatch[0], /isFocusKeywordSupportedType\(pageData\?\.type\)/);
-
   // Must actually be wired into the shared page-type resolver so every
   // existing (and future) call site stays in sync automatically.
   const chipFnMatch = appCode.match(/function updateExtractorChip[\s\S]*?\n\}/);
   assert.ok(chipFnMatch, "updateExtractorChip function found");
-  assert.match(chipFnMatch[0], /updateFocusKeywordAvailability\(pageData\)/);
+  assert.match(
+    chipFnMatch[0],
+    /isFocusKeywordSupportedType\(pageData\?\.type\)/,
+  );
+  assert.doesNotMatch(chipFnMatch[0], /updateFocusKeywordAvailability/);
 });
 
 test("summarizeActivePage gates the focus keyword on page-type support (#319)", () => {
