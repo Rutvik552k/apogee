@@ -26,7 +26,6 @@ import {
   PRIVATE_HOSTS_MAX_CHARS,
   MODEL_NAME_MAX_CHARS,
   isVideoType,
-  isDiscussionType,
 } from "../lib/constants.js";
 import { getSettings } from "../lib/storage/settings.js";
 import {
@@ -809,17 +808,13 @@ const EXTRACTOR_INFO = {
   pdf: { label: "PDF", icon: "filetext" },
 };
 
-// Discussion threads, video, and multi-tab pages don't go through the
-// keyword-focus prompt path: video early-returns into summarizeYoutube
-// (no focusKeyword param), discussion buildMap/buildReduce never receive
-// it (see lib/summarize/ollamaSummarize.js), and the multi-tab synthesis
-// uses buildMultiTabSummaryPrompt (no focusKeyword param - see
-// background/service-worker.js). A visible input that silently does nothing
-// is worse than no input, so it's hidden rather than just disabled. Called
-// from updateExtractorChip so every site that resolves a page's type stays
-// in sync automatically.
+// Only multi-tab pages skip the keyword-focus prompt path: the multi-tab
+// synthesis uses buildMultiTabSummaryPrompt (no focusKeyword param - see
+// background/service-worker.js). Video goes through summarizeYoutube and
+// discussion threads go through the discussion prompts, both of which honor
+// focusKeyword (see lib/summarize/ollamaSummarize.js).
 function isFocusKeywordSupportedType(type) {
-  return !isVideoType(type) && !isDiscussionType(type) && type !== "multi-tab";
+  return type !== "multi-tab";
 }
 // Gate on type support (#319): the input is hidden for video, discussion,
 // and multi-tab pages, but a value typed before the type resolves (or left
@@ -851,16 +846,14 @@ async function getSummaryCacheKeys(url, settings, model, focusKeyword) {
     ),
   };
 }
-function updateFocusKeywordAvailability(pageData) {
-  if (!focusKeywordInput) return;
-  focusKeywordInput.classList.toggle(
+function updateExtractorChip(pageData) {
+  // Visibility lives here so every site that resolves a page's type stays
+  // in sync automatically. A visible input that silently does nothing is
+  // worse than no input, so it's hidden rather than just disabled.
+  focusKeywordInput?.classList.toggle(
     "hidden",
     !isFocusKeywordSupportedType(pageData?.type),
   );
-}
-
-function updateExtractorChip(pageData) {
-  updateFocusKeywordAvailability(pageData);
   const type = pageData?.isPdf ? "pdf" : pageData?.type;
   const info = EXTRACTOR_INFO[type];
   const summaryChip = {
@@ -1818,10 +1811,10 @@ async function summarizeActivePage() {
       return;
     }
 
-    // Gate on type support (#319): the input is hidden for video,
-    // discussion, and multi-tab pages, but a value typed before the type
-    // resolves (or left over) must not fragment the cache or ride along in
-    // job payloads the prompt path ignores.
+    // Gate on type support (#319, #390): the input is hidden for multi-tab
+    // pages, but a value typed before the type resolves (or left over) must
+    // not fragment the cache or ride along in job payloads the prompt path
+    // ignores.
     const focusKeyword = getGatedFocusKeyword(pageData?.type);
 
     const { cacheKey, promptsCacheKey } = await getSummaryCacheKeys(
