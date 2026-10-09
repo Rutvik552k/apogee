@@ -4,10 +4,7 @@ import {
   EXPERIMENTAL_WASM_THREADS,
   TRANSFORMERS_LOAD_RETRY_BASE_DELAY_MS,
 } from "../constants.js";
-import {
-  retryWithBackoff,
-  retryProgressText,
-} from "../util/retry.js";
+import { retryWithBackoff, retryProgressText } from "../util/retry.js";
 import { getTransformers } from "./transformersLib.js";
 import { ortWasmUrl, ortWasmBinary } from "./onnxWasm.js";
 import { createLock } from "../util/mutex.js";

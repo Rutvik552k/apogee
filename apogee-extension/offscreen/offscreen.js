@@ -17,10 +17,7 @@ import {
   OFFSCREEN_STALL_NOTE_MS,
   WEBLLM_DOWNLOAD_RETRY_BASE_DELAY_MS,
 } from "../lib/constants.js";
-import {
-  retryWithBackoff,
-  retryProgressText,
-} from "../lib/util/retry.js";
+import { retryWithBackoff, retryProgressText } from "../lib/util/retry.js";
 import {
   withTransformersEngine,
   transformersChatStream,

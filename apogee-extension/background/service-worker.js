@@ -612,7 +612,11 @@ const LLAMACPP_PROVIDER = {
   streamKind: "llamacpp-stream",
   chatStream: llamaChatStream,
   async getContextTokens(host, apiKey) {
-    const health = await llamaCheckHealth(host, LLM_HEALTH_CHECK_TIMEOUT_MS, apiKey);
+    const health = await llamaCheckHealth(
+      host,
+      LLM_HEALTH_CHECK_TIMEOUT_MS,
+      apiKey,
+    );
     return health.contextTokens ?? LLAMACPP_DEFAULT_CONTEXT_TOKENS;
   },
 };
@@ -1360,7 +1364,10 @@ export async function fetchBilibiliSubtitlesWithStatus({
   // Note: credentials: "include" is required for Bilibili's /x/player/v2 endpoint because Bilibili restricts subtitle list metadata to logged-in sessions. Cookies are strictly scoped to api.bilibili.com API requests on Bilibili pages.
   const { data: listData, status: listStatus } = await fetchJsonWithStatus(
     `https://api.bilibili.com/x/player/v2?${params.toString()}`,
-    { credentials: "include", signal: AbortSignal.timeout(BILIBILI_FETCH_TIMEOUT_MS) },
+    {
+      credentials: "include",
+      signal: AbortSignal.timeout(BILIBILI_FETCH_TIMEOUT_MS),
+    },
     "Bilibili subtitles",
   );
   if (listStatus) return { segments: [], status: listStatus };
@@ -1386,7 +1393,10 @@ export async function fetchBilibiliSubtitlesWithStatus({
   // Subtitle track content on the hdslb.com CDN does not require session authentication, so credentials are explicitly omitted to restrict cookie scope.
   const { data: subData, status: subStatus } = await fetchJsonWithStatus(
     subUrl,
-    { credentials: "omit", signal: AbortSignal.timeout(BILIBILI_FETCH_TIMEOUT_MS) },
+    {
+      credentials: "omit",
+      signal: AbortSignal.timeout(BILIBILI_FETCH_TIMEOUT_MS),
+    },
     "Bilibili subtitle track",
   );
   if (subStatus) return { segments: [], status: subStatus };
@@ -2043,7 +2053,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
             break;
           }
-          const response = await llamaCheckHealth(validHost, LLM_HEALTH_CHECK_TIMEOUT_MS, llamaApiKey);
+          const response = await llamaCheckHealth(
+            validHost,
+            LLM_HEALTH_CHECK_TIMEOUT_MS,
+            llamaApiKey,
+          );
           sendResponse(response);
           break;
         }

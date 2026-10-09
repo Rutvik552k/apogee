@@ -82,7 +82,10 @@ export async function* chatStream(
   });
 }
 
-export async function checkHealth(host, timeoutMs = LLM_HEALTH_CHECK_TIMEOUT_MS) {
+export async function checkHealth(
+  host,
+  timeoutMs = LLM_HEALTH_CHECK_TIMEOUT_MS,
+) {
   await ensureLoopbackCorsRuleSoon();
   try {
     const response = await fetch(`${stripTrailingSlashes(host)}/api/tags`, {
