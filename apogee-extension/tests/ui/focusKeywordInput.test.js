@@ -24,11 +24,6 @@ const appCode = fs.readFileSync(
   "utf-8",
 );
 
-const constantsCode = fs.readFileSync(
-  new URL("../../lib/constants.js", import.meta.url),
-  "utf-8",
-);
-
 test("app.html declares the focus keyword input with the documented cap (#161)", () => {
   const { document } = parseHTML(appHtmlRaw);
   const input = document.getElementById("focusKeywordInput");
@@ -139,7 +134,7 @@ test("re-summarizing the same page does not clear the focus keyword (#161)", () 
   assert.doesNotMatch(line, /focusKeywordInput\.value/);
 });
 
-test("the focus keyword input is hidden on discussion, video, and multi-tab pages (#161)", () => {
+test("the focus keyword input is hidden on multi-tab pages only - video and discussion honor it (#388)", () => {
   // Single source of truth lives in isFocusKeywordSupportedType (#319);
   // updateFocusKeywordAvailability just delegates to it.
   const helperMatch = appCode.match(
@@ -147,41 +142,12 @@ test("the focus keyword input is hidden on discussion, video, and multi-tab page
   );
   assert.ok(helperMatch, "isFocusKeywordSupportedType function found");
   const helperBody = helperMatch[0];
-  for (const needle of [
-    "isVideoType(type)",
-    "isDiscussionType(type)",
-    '"multi-tab"',
-  ]) {
-    assert.ok(
-      helperBody.includes(needle),
-      `expected ${needle} in the support check`,
-    );
-  }
-
-  // The discussion triple lives in one shared helper (lib/constants.js),
-  // used by both the visibility gate above and the summarize prompt path
-  // (lib/summarize/ollamaSummarize.js) - not copy-pasted in each.
-  const discussionSetMatch = constantsCode.match(
-    /DISCUSSION_PAGE_TYPES = new Set\([\s\S]*?\]\)/,
+  assert.ok(
+    helperBody.includes('"multi-tab"'),
+    'expected "multi-tab" in the support check',
   );
-  assert.ok(discussionSetMatch, "DISCUSSION_PAGE_TYPES set found");
-  for (const needle of ['"hackernews"', '"reddit"', '"stackoverflow"']) {
-    assert.ok(
-      discussionSetMatch[0].includes(needle),
-      `expected ${needle} in DISCUSSION_PAGE_TYPES`,
-    );
-  }
-  assert.match(constantsCode, /function isDiscussionType/);
-  assert.match(
-    appCode,
-    /import \{[\s\S]*?isDiscussionType[\s\S]*?\} from "\.\.\/lib\/constants\.js"/,
-  );
-  const summarizeCode = fs.readFileSync(
-    new URL("../../lib/summarize/ollamaSummarize.js", import.meta.url),
-    "utf-8",
-  );
-  assert.match(summarizeCode, /isDiscussionType\(type\)/);
-  assert.doesNotMatch(summarizeCode, /type === "hackernews"/);
+  assert.doesNotMatch(helperBody, /isVideoType/);
+  assert.doesNotMatch(helperBody, /isDiscussionType/);
 
   const fnMatch = appCode.match(
     /function updateFocusKeywordAvailability[\s\S]*?\n\}/,
