@@ -158,16 +158,18 @@ test("service worker cleanup alarm terminates subscribers before deleting stream
     "../../background/service-worker.js",
     import.meta.url,
   );
-  const handlerStart = code.indexOf("function expireStreamForCleanup");
-  assert.ok(handlerStart !== -1, "cleanup expiry helper exists");
-  const handlerBody = code.slice(handlerStart, handlerStart + 1200);
+  const handlerMatch = code.match(
+    /function expireStreamForCleanup\(streamId\) \{[\s\S]*?\n\}/,
+  );
+  assert.ok(handlerMatch, "cleanup expiry helper exists");
+  const handlerBody = handlerMatch[0];
   assert.ok(
     handlerBody.includes("activeStreams.get(streamId)"),
     "expiry reads the stream before deletion",
   );
   assert.ok(
     handlerBody.includes('type: "error"') &&
-      handlerBody.includes("EXPECTED_EXPIRED_STREAM_ERROR"),
+      handlerBody.includes("EXPIRED_STREAM_ERROR"),
     "expiry broadcasts a terminal expired-stream error",
   );
   assert.ok(

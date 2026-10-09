@@ -249,7 +249,7 @@ export function takePendingFinalize(jobId, now = Date.now()) {
 export const FINALIZE_FAILED_MESSAGE =
   "Couldn't save this summary (storage unavailable). The text above is preserved — try summarizing again.";
 
-const EXPECTED_EXPIRED_STREAM_ERROR =
+const EXPIRED_STREAM_ERROR =
   "This response is no longer available (its stream expired). " +
   "Try summarizing again.";
 
@@ -480,12 +480,13 @@ function scheduleStreamCleanup(streamId) {
 function expireStreamForCleanup(streamId) {
   const stream = activeStreams.get(streamId);
   if (stream && !stream.done) {
+    // Cleanup alarms run outside finish(), so mark terminal state here.
     stream.done = true;
-    stream.error = EXPECTED_EXPIRED_STREAM_ERROR;
+    stream.error = EXPIRED_STREAM_ERROR;
     stream.errorUserFacing = true;
     broadcastToStream(stream, {
       type: "error",
-      error: EXPECTED_EXPIRED_STREAM_ERROR,
+      error: EXPIRED_STREAM_ERROR,
       userFacing: true,
     });
     disconnectStreamPorts(stream);
@@ -1833,7 +1834,7 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onConnect?.addListener) {
     if (!stream) {
       safePost(popupPort, {
         type: "error",
-        error: EXPECTED_EXPIRED_STREAM_ERROR,
+        error: EXPIRED_STREAM_ERROR,
       });
       safeDisconnect(popupPort);
       return;
