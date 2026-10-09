@@ -153,6 +153,38 @@ test("service worker extends cleanup on local chunks and relayed chunks", () => 
   );
 });
 
+test("service worker cleanup alarm terminates subscribers before deleting stream state", () => {
+  const code = readSource(
+    "../../background/service-worker.js",
+    import.meta.url,
+  );
+  const handlerStart = code.indexOf("function expireStreamForCleanup");
+  assert.ok(handlerStart !== -1, "cleanup expiry helper exists");
+  const handlerBody = code.slice(handlerStart, handlerStart + 1200);
+  assert.ok(
+    handlerBody.includes("activeStreams.get(streamId)"),
+    "expiry reads the stream before deletion",
+  );
+  assert.ok(
+    handlerBody.includes('type: "error"') &&
+      handlerBody.includes("EXPECTED_EXPIRED_STREAM_ERROR"),
+    "expiry broadcasts a terminal expired-stream error",
+  );
+  assert.ok(
+    handlerBody.includes("disconnectStreamPorts(stream)"),
+    "expiry disconnects popup subscribers before dropping stream state",
+  );
+  assert.ok(
+    handlerBody.indexOf("disconnectStreamPorts(stream)") <
+      handlerBody.indexOf("activeStreams.delete(streamId)"),
+    "subscriber disconnect happens before active stream deletion",
+  );
+  assert.ok(
+    handlerBody.includes("registeredStreamJobs.delete(streamId)"),
+    "expiry still removes registered stream jobs",
+  );
+});
+
 test("broadcast copies the subscriber set before iterating", () => {
   const code = readSource("../../lib/util/streamBroadcast.js", import.meta.url);
   assert.ok(
