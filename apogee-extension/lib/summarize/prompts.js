@@ -469,7 +469,13 @@ export function buildDiscussionPrompt(
   });
 }
 
-export function buildYoutubeMapPrompt(title, chunk, chunkIndex, chunkTotal, focusKeyword = "") {
+export function buildYoutubeMapPrompt(
+  title,
+  chunk,
+  chunkIndex,
+  chunkTotal,
+  focusKeyword = "",
+) {
   return [
     "You are Apogee, condensing one part of a YouTube video's transcript into notes for a later assembly step. Another pass will turn your notes (from every part) into the final summary - do not try to summarize the whole video here.",
     "",

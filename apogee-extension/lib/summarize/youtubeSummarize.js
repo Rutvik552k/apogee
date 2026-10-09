@@ -26,7 +26,17 @@ function lastAvailableSecondsIn(text) {
 }
 
 export async function* summarizeYoutube(
-  { text, title, url, model, host, signal, language, customInstructions, focusKeyword = "" },
+  {
+    text,
+    title,
+    url,
+    model,
+    host,
+    signal,
+    language,
+    customInstructions,
+    focusKeyword = "",
+  },
   {
     chunkTextFn = chunkText,
     chatStreamFn = chatStream,
