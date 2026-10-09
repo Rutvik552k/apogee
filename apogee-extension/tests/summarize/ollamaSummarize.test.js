@@ -323,7 +323,7 @@ test("summarizeText applies a focus keyword to discussion single-chunk, map, and
   assert.match(reducePrompt, /battery pricing/);
 });
 
-test("summarizeText ignores a focus keyword for video pages (#161)", async () => {
+test("summarizeText honors a focus keyword for video pages (#388)", async () => {
   const prompts = [];
   async function* chatStreamFn(_host, _model, prompt) {
     prompts.push(prompt);
@@ -345,8 +345,8 @@ test("summarizeText ignores a focus keyword for video pages (#161)", async () =>
   );
 
   for (const p of prompts) {
-    assert.doesNotMatch(p, /READER'S FOCUS/);
-    assert.doesNotMatch(p, /battery pricing/);
+    assert.match(p, /READER'S FOCUS/);
+    assert.match(p, /battery pricing/);
   }
 });
 
