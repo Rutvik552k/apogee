@@ -62,6 +62,7 @@ export async function* summarizeText(
         signal,
         language,
         customInstructions,
+        focusKeyword,
       },
       { chunkTextFn, chatStreamFn, onProgress, detectLanguageFn, translateFn },
     );

@@ -26,7 +26,7 @@ function lastAvailableSecondsIn(text) {
 }
 
 export async function* summarizeYoutube(
-  { text, title, url, model, host, signal, language, customInstructions },
+  { text, title, url, model, host, signal, language, customInstructions, focusKeyword = "" },
   {
     chunkTextFn = chunkText,
     chatStreamFn = chatStream,
@@ -55,12 +55,14 @@ export async function* summarizeYoutube(
             noteText,
             chapters,
             lastAvailableSeconds,
+            focusKeyword,
           )
         : buildYoutubeAssemblyPrompt(
             title,
             url,
             noteText,
             lastAvailableSeconds,
+            focusKeyword,
           ),
       customInstructions,
     );
@@ -77,7 +79,7 @@ export async function* summarizeYoutube(
     {
       buildSingle: (chunk) => buildAssembly(chunk),
       buildMap: (chunk, i, total) =>
-        buildYoutubeMapPrompt(title, chunk, i, total),
+        buildYoutubeMapPrompt(title, chunk, i, total, focusKeyword),
       buildReduce: (notes) => buildAssembly(notes.join("\n")),
     },
   );

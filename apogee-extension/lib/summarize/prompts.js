@@ -150,6 +150,19 @@ function focusKeywordClause(focusKeyword) {
   ];
 }
 
+// Map passes feed a later synthesis/assembly step, which can only emphasize
+// focus topics the notes kept: without the keep-line, chunk notes drop
+// passing mentions as trivia and the focus clause at reduce has nothing to
+// work with (#161). Shared by buildExtractNotesPrompt and
+// buildYoutubeMapPrompt.
+function mapFocusKeepLine(focusKeyword) {
+  const trimmed = (focusKeyword || "").trim();
+  if (!trimmed) return [];
+  return [
+    "- Keep every point that touches the reader's focus topics below, even a passing mention - do not drop them as minor detail.",
+  ];
+}
+
 function bulletsStyle(min, max) {
   return [
     "Return only the final answer.",
@@ -315,7 +328,6 @@ export function buildExtractNotesPrompt(
   chunkTotal,
   focusKeyword = "",
 ) {
-  const focusLines = focusKeywordClause(focusKeyword);
   return [
     "You are Apogee, extracting the key information from one part of a document.",
     "",
@@ -325,18 +337,11 @@ export function buildExtractNotesPrompt(
     INJECTION_RULE,
     '- One point per line, each starting with "- ".',
     "- Capture facts, findings, arguments, events, names, and numbers - keep concrete specifics, do not generalize them away.",
-    // A later synthesis step can only emphasize focus topics the notes kept:
-    // without this, chunk notes drop passing mentions as trivia and the
-    // focus clause at synthesis has nothing to work with (#161).
-    ...(focusLines.length
-      ? [
-          "- Keep every point that touches the reader's focus topics below, even a passing mention - do not drop them as minor detail.",
-        ]
-      : []),
+    ...mapFocusKeepLine(focusKeyword),
     "- Stay strictly grounded in this part's text; do NOT invent or infer beyond it.",
     "- IGNORE promotional or non-substantive material (ads, sponsor reads, calls to action, navigation, boilerplate).",
     "- Output only the list: no preamble, no heading, no conclusion.",
-    ...focusLines,
+    ...focusKeywordClause(focusKeyword),
     "",
     "DOCUMENT TITLE:",
     fenceTitle(title),
@@ -464,7 +469,7 @@ export function buildDiscussionPrompt(
   });
 }
 
-export function buildYoutubeMapPrompt(title, chunk, chunkIndex, chunkTotal) {
+export function buildYoutubeMapPrompt(title, chunk, chunkIndex, chunkTotal, focusKeyword = "") {
   return [
     "You are Apogee, condensing one part of a YouTube video's transcript into notes for a later assembly step. Another pass will turn your notes (from every part) into the final summary - do not try to summarize the whole video here.",
     "",
@@ -478,6 +483,8 @@ export function buildYoutubeMapPrompt(title, chunk, chunkIndex, chunkTotal) {
     "- Write 6-12 concise bullet points - aim for roughly one per 30-45 seconds of this part - so the later assembly step has enough distinct moments to build a full timeline. Capture each substantive beat as it happens rather than collapsing the whole part into a few bullets.",
     "- Prefix each bullet with the single closest [MM:SS] marker from the transcript above, copied EXACTLY as written. Never invent, adjust, or estimate a timestamp.",
     "- Do not add any heading, introduction, or conclusion. Output only the bullets.",
+    ...mapFocusKeepLine(focusKeyword),
+    ...focusKeywordClause(focusKeyword),
     "",
     "VIDEO TITLE:",
     fenceTitle(title),
@@ -549,6 +556,7 @@ export function buildYoutubeAssemblyPrompt(
   url,
   notes,
   lastAvailableSeconds,
+  focusKeyword = "",
 ) {
   const lastTimestamp = formatSecondsAsTimestamp(lastAvailableSeconds);
   // Sanitize before deriving jump-link templates: the URL is interpolated
@@ -581,6 +589,7 @@ export function buildYoutubeAssemblyPrompt(
     `- Never use a timestamp later than ${lastAvailableSeconds} seconds (${lastTimestamp}), the last moment actually covered by the transcript.`,
     "- Omit anything promotional (sponsor reads, subscribe asks, merch, calls to action) that may have slipped into the notes.",
     "- Be neutral: summarize and explain, do not editorialize.",
+    ...focusKeywordClause(focusKeyword),
     "",
     "Key-moment link format (mandatory on EVERY moment):",
     `- Start each bullet with its timestamp as a Markdown link back to that moment: [MM:SS](${tsBase}SECONDS${tsSuffix}), where SECONDS is the integer seconds copied from the notes (e.g. a [4:12] note becomes [4:12](${tsBase}252${tsSuffix})).`,
@@ -603,6 +612,7 @@ export function buildYoutubeBriefPrompt(
   notes,
   chapters,
   lastAvailableSeconds,
+  focusKeyword = "",
 ) {
   const { base: tsBase, suffix: tsSuffix } = videoTimestampParts(
     sanitizePromptField(url, URL_MAX_CHARS),
@@ -644,6 +654,7 @@ export function buildYoutubeBriefPrompt(
     `- Never reference a moment later than ${lastAvailableSeconds} seconds (${lastTimestamp}), the end of the available transcript.`,
     "- Omit anything promotional (sponsor reads, subscribe asks, merch, calls to action).",
     '- Be neutral: summarize and explain, do not editorialize. Do not add any preamble like "Here is the brief".',
+    ...focusKeywordClause(focusKeyword),
     "",
     "CHAPTER HEADINGS (use each line verbatim as a section header, in this order):",
     chapterHeadings.join("\n"),
