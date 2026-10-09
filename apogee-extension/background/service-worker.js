@@ -90,6 +90,12 @@ import {
 } from "../lib/engines/providers.js";
 import { PROVIDERS, DEFAULT_LLAMACPP_HOST } from "../lib/constants.js";
 import {
+  OFFSCREEN_READY_TIMEOUT_MS,
+  LLM_HEALTH_CHECK_TIMEOUT_MS,
+  SPONSORBLOCK_FETCH_TIMEOUT_MS,
+  BILIBILI_FETCH_TIMEOUT_MS,
+} from "../lib/constants.js";
+import {
   ALLOWED_OLLAMA_HOSTS,
   DEFAULT_OLLAMA_PORT,
   validateLoopbackUrl,
@@ -188,7 +194,7 @@ async function ensureOffscreenDocumentOnce() {
 
   offscreenReady = false;
 
-  await withTimeout(offscreenScriptReadyPromise, 8000, {
+  await withTimeout(offscreenScriptReadyPromise, OFFSCREEN_READY_TIMEOUT_MS, {
     onTimeout: () => {
       throw new Error(
         "Offscreen document did not signal ready within 8 seconds. " +
@@ -606,7 +612,7 @@ const LLAMACPP_PROVIDER = {
   streamKind: "llamacpp-stream",
   chatStream: llamaChatStream,
   async getContextTokens(host, apiKey) {
-    const health = await llamaCheckHealth(host, 3000, apiKey);
+    const health = await llamaCheckHealth(host, LLM_HEALTH_CHECK_TIMEOUT_MS, apiKey);
     return health.contextTokens ?? LLAMACPP_DEFAULT_CONTEXT_TOKENS;
   },
 };
@@ -1302,7 +1308,7 @@ export async function fetchSponsorBlockSegmentsWithStatus(videoId) {
 
   const { data, status } = await fetchJsonWithStatus(
     url,
-    { signal: AbortSignal.timeout(4000) },
+    { signal: AbortSignal.timeout(SPONSORBLOCK_FETCH_TIMEOUT_MS) },
     "SponsorBlock lookup",
   );
   if (status) return { segments: [], status };
@@ -1354,7 +1360,7 @@ export async function fetchBilibiliSubtitlesWithStatus({
   // Note: credentials: "include" is required for Bilibili's /x/player/v2 endpoint because Bilibili restricts subtitle list metadata to logged-in sessions. Cookies are strictly scoped to api.bilibili.com API requests on Bilibili pages.
   const { data: listData, status: listStatus } = await fetchJsonWithStatus(
     `https://api.bilibili.com/x/player/v2?${params.toString()}`,
-    { credentials: "include", signal: AbortSignal.timeout(6000) },
+    { credentials: "include", signal: AbortSignal.timeout(BILIBILI_FETCH_TIMEOUT_MS) },
     "Bilibili subtitles",
   );
   if (listStatus) return { segments: [], status: listStatus };
@@ -1380,7 +1386,7 @@ export async function fetchBilibiliSubtitlesWithStatus({
   // Subtitle track content on the hdslb.com CDN does not require session authentication, so credentials are explicitly omitted to restrict cookie scope.
   const { data: subData, status: subStatus } = await fetchJsonWithStatus(
     subUrl,
-    { credentials: "omit", signal: AbortSignal.timeout(6000) },
+    { credentials: "omit", signal: AbortSignal.timeout(BILIBILI_FETCH_TIMEOUT_MS) },
     "Bilibili subtitle track",
   );
   if (subStatus) return { segments: [], status: subStatus };
@@ -2037,7 +2043,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
             break;
           }
-          const response = await llamaCheckHealth(validHost, 3000, llamaApiKey);
+          const response = await llamaCheckHealth(validHost, LLM_HEALTH_CHECK_TIMEOUT_MS, llamaApiKey);
           sendResponse(response);
           break;
         }

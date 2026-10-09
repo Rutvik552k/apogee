@@ -14,6 +14,11 @@ import {
 import { createLock } from "../lib/util/mutex.js";
 import { WEBLLM_MODELS, isKnownWebLLMModelId } from "../lib/constants.js";
 import {
+  OFFSCREEN_STALL_NOTE_MS,
+  WEBLLM_DOWNLOAD_RETRY_BASE_DELAY_MS,
+} from "../lib/constants.js";
+import { retryDelayForAttempt } from "../lib/util/withTimeout.js";
+import {
   withTransformersEngine,
   transformersChatStream,
   getTransformersStatus,
@@ -190,7 +195,7 @@ async function ensureEngine(modelId) {
       .catch(() => {});
   };
 
-  const STALL_NOTE_MS = 45 * 1000;
+  const STALL_NOTE_MS = OFFSCREEN_STALL_NOTE_MS;
   let lastReport = null;
   let stallTimer = null;
   const scheduleStallNote = () => {
@@ -252,7 +257,15 @@ async function ensureEngine(modelId) {
           progress: 0,
           text: `Download hiccup - retrying (attempt ${attempt + 1} of ${MAX_DOWNLOAD_ATTEMPTS})...`,
         });
-        await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            retryDelayForAttempt(
+              WEBLLM_DOWNLOAD_RETRY_BASE_DELAY_MS,
+              attempt,
+            ),
+          ),
+        );
       }
     }
   } finally {

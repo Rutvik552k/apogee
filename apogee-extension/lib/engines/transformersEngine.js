@@ -2,7 +2,9 @@ import { debugLog } from "../util/log.js";
 import {
   TRANSFORMERS_MODELS,
   EXPERIMENTAL_WASM_THREADS,
+  TRANSFORMERS_LOAD_RETRY_BASE_DELAY_MS,
 } from "../constants.js";
+import { retryDelayForAttempt } from "../util/withTimeout.js";
 import { getTransformers } from "./transformersLib.js";
 import { ortWasmUrl, ortWasmBinary } from "./onnxWasm.js";
 import { createLock } from "../util/mutex.js";
@@ -103,7 +105,15 @@ async function loadPipeline(modelId, modelInfo, onProgress) {
         progress: 0,
         text: `Download hiccup - retrying (attempt ${attempt + 1} of ${LOAD_MAX_ATTEMPTS})...`,
       });
-      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      await new Promise((resolve) =>
+        setTimeout(
+          resolve,
+          retryDelayForAttempt(
+            TRANSFORMERS_LOAD_RETRY_BASE_DELAY_MS,
+            attempt,
+          ),
+        ),
+      );
     }
   }
 }
