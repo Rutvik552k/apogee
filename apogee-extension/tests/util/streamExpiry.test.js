@@ -163,27 +163,28 @@ test("service worker cleanup alarm terminates subscribers before deleting stream
   );
   assert.ok(handlerMatch, "cleanup expiry helper exists");
   const handlerBody = handlerMatch[0];
-  assert.ok(
-    handlerBody.includes("activeStreams.get(streamId)"),
-    "expiry reads the stream before deletion",
-  );
+  for (const [needle, message] of [
+    ["activeStreams.get(streamId)", "expiry reads the stream before deletion"],
+    [
+      "disconnectStreamPorts(stream)",
+      "expiry disconnects popup subscribers before dropping stream state",
+    ],
+    [
+      "registeredStreamJobs.delete(streamId)",
+      "expiry still removes registered stream jobs",
+    ],
+  ]) {
+    assert.ok(handlerBody.includes(needle), message);
+  }
   assert.ok(
     handlerBody.includes('type: "error"') &&
       handlerBody.includes("EXPIRED_STREAM_ERROR"),
     "expiry broadcasts a terminal expired-stream error",
   );
   assert.ok(
-    handlerBody.includes("disconnectStreamPorts(stream)"),
-    "expiry disconnects popup subscribers before dropping stream state",
-  );
-  assert.ok(
     handlerBody.indexOf("disconnectStreamPorts(stream)") <
       handlerBody.indexOf("activeStreams.delete(streamId)"),
     "subscriber disconnect happens before active stream deletion",
-  );
-  assert.ok(
-    handlerBody.includes("registeredStreamJobs.delete(streamId)"),
-    "expiry still removes registered stream jobs",
   );
 });
 
